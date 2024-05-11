@@ -2,56 +2,61 @@ from django.shortcuts import render
 import requests
 import datetime
 
+
 # Create your views here.
 
 def forcast(request):
-    #daily data through API
-    url = 'http://api.openweathermap.org/data/2.5/weather?q={}&units=metric&appid=your_api_id'
+    default_city = 'Bungoma'
+    url = 'https://api.openweathermap.org/data/2.5/weather?q={}&units=metric&appid=d48a8488df875a790872dfc3a21175a0'
 
-    # city variable change it to change the data. For ex. New York
-    city = 'Ahmedabad'
-    city_weather = requests.get(url.format(city)).json()  # request the API data and convert the JSON to Python data types
+    if request.method == 'POST':
+        city = request.POST.get('city', default_city)
 
-    #daily weather data
+    else:
+        city = default_city
+
+    city_weather = requests.get(url.format(city)).json()
+    # request the API data and convert the JSON to Python data types
+
     weather = {
         'city': city,
         'temperature': city_weather['main']['temp'],
         'description': city_weather['weather'][0]['description'],
         'icon': city_weather['weather'][0]['icon'],
-        'temperature_max': city_weather['main']['temp_max'] ,
-        'temperature_min':  city_weather['main']['temp_min']  ,
-        'feelslike_weather': city_weather['main']['feels_like']
+        'temperature_max': city_weather['main']['temp_max'],
+        'temperature_min': city_weather['main']['temp_min'],
+        'feelslike_weather': city_weather['main']['feels_like'],
+        'wind': city_weather['wind']['speed'],
+        'humidity': city_weather['main']['humidity']
 
     }
 
-    #forcasted weather data API
-    v = 'http://api.openweathermap.org/data/2.5/forecast?q={}&&units=metric&appid=your_api_id'
+    v = 'https://api.openweathermap.org/data/2.5/forecast?q={}&&units=metric&appid=d48a8488df875a790872dfc3a21175a0'
     a = v.format(city)
-    #accessing the API json data
+
     full = requests.get(a).json()
 
-    # today's date taking as int
     day = datetime.datetime.today()
     today_date = int(day.strftime('%d'))
 
+    forcast_data_list = {}
 
-    forcast_data_list = {} # dictionary to store json data
-
-    #looping to get value and put it in the dictionary
     for c in range(0, full['cnt']):
         date_var1 = full['list'][c]['dt_txt']
         date_time_obj1 = datetime.datetime.strptime(date_var1, '%Y-%m-%d %H:%M:%S')
-        # print the json data and analyze the data coming to understand the structure. I couldn't find the better way
-        # to process date
-        if int(date_time_obj1.strftime('%d')) == today_date or int(date_time_obj1.strftime('%d')) == today_date+1:
+        # print t
+        if int(date_time_obj1.strftime('%d')) == today_date or int(date_time_obj1.strftime('%d')) == today_date + 1:
             # print(date_time_obj1.strftime('%d %a'))
-            if int(date_time_obj1.strftime('%d')) == today_date+1:
+            if int(date_time_obj1.strftime('%d')) == today_date + 1:
                 today_date += 1
             forcast_data_list[today_date] = {}
             forcast_data_list[today_date]['day'] = date_time_obj1.strftime('%A')
             forcast_data_list[today_date]['date'] = date_time_obj1.strftime('%d %b, %Y')
             forcast_data_list[today_date]['time'] = date_time_obj1.strftime('%I:%M %p')
             forcast_data_list[today_date]['FeelsLike'] = full['list'][c]['main']['feels_like']
+
+            forcast_data_list[today_date]['Wind'] = full['list'][c]['wind']['speed']
+            forcast_data_list[today_date]['Humidity'] = full['list'][c]['main']['humidity']
 
             forcast_data_list[today_date]['temperature'] = full['list'][c]['main']['temp']
             forcast_data_list[today_date]['temperature_max'] = full['list'][c]['main']['temp_max']
@@ -63,9 +68,11 @@ def forcast(request):
             today_date += 1
         else:
             pass
-    #returning the context with all the data to the index.html
+
     context = {
-        'weather':weather, 'forcast_data_list':forcast_data_list
+        'city_weather': city_weather,
+        'city': city,
+        'weather': weather, 'forcast_data_list': forcast_data_list
     }
 
     return render(request, 'index.html', context)
